@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { TranslationResult, Language } from '../types';
 import WordBreakdown from './WordBreakdown';
 import { translations, UILanguage } from '../lang';
@@ -25,6 +25,7 @@ const TranslationCard: React.FC<Props> = ({
   isSpeakingTarget,
   uiLang
 }) => {
+  const [copied, setCopied] = useState(false);
   const t = translations[uiLang];
 
   const getLanguageLabel = (lang: Language) => {
@@ -33,6 +34,12 @@ const TranslationCard: React.FC<Props> = ({
       case Language.DZONGKHA: return t.langNameDz;
       default: return lang;
     }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(result.targetText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -83,9 +90,19 @@ const TranslationCard: React.FC<Props> = ({
         {/* Target Display */}
         <div className="flex justify-between items-start">
           <div className="flex-1 pr-6">
-            <span className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.3em] block mb-2">
-              {t.labelResult} ({getLanguageLabel(targetLang)})
-            </span>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.3em] block">
+                {t.labelResult} ({getLanguageLabel(targetLang)})
+              </span>
+              <button 
+                onClick={handleCopy}
+                className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full transition-all ${
+                  copied ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600'
+                }`}
+              >
+                {copied ? <i className="fas fa-check"></i> : <i className="far fa-copy"></i>} {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
             <h2 className={`text-4xl sm:text-5xl font-black text-slate-900 leading-tight tracking-tight ${targetLang === Language.JAPANESE ? 'font-jp' : 'font-dz'}`}>
               {result.targetText}
             </h2>
