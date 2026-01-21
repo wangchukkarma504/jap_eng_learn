@@ -22,7 +22,12 @@ const HistoryView: React.FC<Props> = ({
   uiLang
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const t = translations[uiLang];
+
+  // Minimum swipe distance (in px) to trigger navigation
+  const minSwipeDistance = 50;
 
   if (history.length === 0) {
     return (
@@ -52,6 +57,30 @@ const HistoryView: React.FC<Props> = ({
     setCurrentIndex(prev => (prev < history.length - 1 ? prev + 1 : prev));
   };
 
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && currentIndex < history.length - 1) {
+      handleNext();
+    }
+    if (isRightSwipe && currentIndex > 0) {
+      handlePrev();
+    }
+  };
+
   return (
     <div className="flex flex-col h-full space-y-6">
       {/* Navigation Header */}
@@ -75,7 +104,12 @@ const HistoryView: React.FC<Props> = ({
       </div>
 
       {/* Card Area */}
-      <div className="relative flex-1">
+      <div 
+        className="relative flex-1"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         <div key={currentItem.id} className="animate-in fade-in slide-in-from-right-8 duration-500">
           <TranslationCard 
             result={currentItem.result}
@@ -98,29 +132,6 @@ const HistoryView: React.FC<Props> = ({
             uiLang={uiLang}
           />
         </div>
-      </div>
-
-      {/* Navigation Controls */}
-      <div className="flex items-center justify-between gap-4 py-4">
-        <button 
-          onClick={handlePrev}
-          disabled={currentIndex === 0}
-          className={`flex-1 py-4 rounded-[1.5rem] flex items-center justify-center bg-white shadow-xl shadow-slate-200/50 border border-slate-50 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-            currentIndex === 0 ? 'opacity-30' : 'hover:text-indigo-600 hover:border-indigo-100'
-          }`}
-        >
-          <i className="fas fa-chevron-left mr-3"></i> {t.btnPrev}
-        </button>
-
-        <button 
-          onClick={handleNext}
-          disabled={currentIndex === history.length - 1}
-          className={`flex-1 py-4 rounded-[1.5rem] flex items-center justify-center bg-white shadow-xl shadow-slate-200/50 border border-slate-50 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-            currentIndex === history.length - 1 ? 'opacity-30' : 'hover:text-indigo-600 hover:border-indigo-100'
-          }`}
-        >
-          {t.btnNext} <i className="fas fa-chevron-right ml-3"></i>
-        </button>
       </div>
     </div>
   );
