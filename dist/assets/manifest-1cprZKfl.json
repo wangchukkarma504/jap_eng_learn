@@ -1,0 +1,23 @@
+
+{
+  "name": "LingoBridge: Japanese & Dzongkha",
+  "short_name": "LingoBridge",
+  "description": "Learn Japanese and Dzongkha with AI translations and breakdown.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FDFDFE",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3898/3898082.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/192/3898/3898082.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

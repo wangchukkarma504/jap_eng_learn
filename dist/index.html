@@ -1,0 +1,90 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LingoBridge | JA-DZ Translator</title>
+    
+    <!-- PWA / SEO -->
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="description" content="AI-powered Japanese and Dzongkha language learning bridge with word analysis and speech.">
+    <link rel="manifest" href="/assets/manifest-1cprZKfl.json">
+    
+    <!-- iOS / Apple Specific -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LingoBridge">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3898/3898082.png">
+
+    <!-- Fonts and Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Sans+Tibetan:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --safe-area-inset-top: env(safe-area-inset-top, 0px);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFDFE;
+            -webkit-tap-highlight-color: transparent;
+            padding-top: var(--safe-area-inset-top);
+        }
+        .font-jp { font-family: 'Noto Sans JP', sans-serif; }
+        .font-dz { font-family: 'Noto Sans Tibetan', sans-serif; }
+        
+        * { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { display: none; }
+        
+        /* Loading overlay for better start-up feel */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: #FDFDFE;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+    </style>
+
+
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-BK8S5sWy.js"></script>
+</head>
+<body>
+    <div id="loading-overlay">
+        <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+    </div>
+    <div id="root"></div>
+    <script>
+        // Service Worker registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW error', err));
+            });
+        }
+        
+        // Remove loading overlay once script starts
+        window.addEventListener('DOMContentLoaded', () => {
+            const loader = document.getElementById('loading-overlay');
+            if (loader) loader.style.opacity = '0';
+            setTimeout(() => loader?.remove(), 300);
+        });
+    </script>
+</body>
+</html>
