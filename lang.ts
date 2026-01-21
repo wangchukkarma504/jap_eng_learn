@@ -1,0 +1,55 @@
+
+export type UILanguage = 'en' | 'ja';
+
+export const translations = {
+  ja: {
+    appTitle: 'LingoBridge',
+    appSubtitle: 'グローバル・コネクト',
+    tabTranslate: '翻訳',
+    tabHistory: '履歴',
+    labelSource: '翻訳元',
+    labelTarget: '翻訳先',
+    placeholderPrefix: 'でメッセージを入力...',
+    btnTranslate: '翻訳する',
+    btnTranslating: '翻訳中',
+    btnBack: '戻る',
+    btnStart: '翻訳を始める',
+    btnPrev: '前へ',
+    btnNext: '次へ',
+    noHistoryTitle: '履歴がありません',
+    noHistoryDesc: '翻訳した内容はここに自動的に保存されます。',
+    labelOriginal: '原文',
+    labelResult: '結果',
+    labelAnalysis: '単語分析',
+    labelSourceTerm: '元の単語',
+    errorDiffLang: '翻訳元と翻訳先は異なる言語を選択してください。',
+    errorFailed: '翻訳に失敗しました。もう一度お試しください。',
+    langNameJa: '日本語',
+    langNameDz: 'ゾンカ語'
+  },
+  en: {
+    appTitle: 'LingoBridge',
+    appSubtitle: 'Global Connect',
+    tabTranslate: 'TRANSLATE',
+    tabHistory: 'HISTORY',
+    labelSource: 'Source',
+    labelTarget: 'Target',
+    placeholderPrefix: 'Enter message in...',
+    btnTranslate: 'Translate',
+    btnTranslating: 'Translating',
+    btnBack: 'Go Back',
+    btnStart: 'Start Translating',
+    btnPrev: 'Previous',
+    btnNext: 'Next',
+    noHistoryTitle: 'No history found',
+    noHistoryDesc: 'Translations you perform will appear here automatically.',
+    labelOriginal: 'Original',
+    labelResult: 'Result',
+    labelAnalysis: 'Analysis',
+    labelSourceTerm: 'Source',
+    errorDiffLang: 'Please select different source and target languages.',
+    errorFailed: 'Translation failed. Please try again.',
+    langNameJa: 'Japanese',
+    langNameDz: 'Dzongkha'
+  }
+};

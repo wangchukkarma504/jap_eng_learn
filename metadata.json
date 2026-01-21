@@ -1,0 +1,7 @@
+{
+  "name": "LingoBridge: Japanese & Dzongkha",
+  "description": "An advanced language learning application focused on Japanese and Dzongkha. It provides translations, transliterations (Romaji), word-by-word analysis, and high-quality AI-generated speech.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
