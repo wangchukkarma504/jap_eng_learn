@@ -9,9 +9,28 @@ export const translateAndAnalyze = async (
 ): Promise<TranslationResult> => {
   const ai = new GoogleGenAI({ apiKey: "AIzaSyA-BrGa0sACnNYKcCPTBw0_3Ec7FpNM6eA"});
   
+  // Get reference translation from Google Translate
+  let referenceTranslation = "";
+  try {
+    const langCode = targetLang === "Dzongkha" ? "dz" : "en";
+    const url = "https://translate.googleapis.com/translate_a/single" +
+      "?client=gtx" +
+      "&sl=ja" +
+      `&tl=${langCode}` +
+      "&dt=t" +
+      "&dt=rm" +
+      "&q=" + encodeURIComponent(text);
+    const res = await fetch(url);
+    const data = await res.json();
+    referenceTranslation = data[0].map((i: any[]) => i[0]).join("");
+  } catch (error) {
+    console.error("Failed to fetch Google Translate reference:", error);
+  }
+  
   const prompt = `
     Role: Translator.
     Task: Translate "${text}" from ${sourceLang} to ${targetLang}.
+    Reference Translation (from Google Translate): "${referenceTranslation}"
 
     STRICT OUTPUT RULES:
     1. Output MUST be valid JSON.
