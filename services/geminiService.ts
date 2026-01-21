@@ -7,7 +7,7 @@ export const translateAndAnalyze = async (
   sourceLang: Language,
   targetLang: Language
 ): Promise<TranslationResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyA-BrGa0sACnNYKcCPTBw0_3Ec7FpNM6eA"});
   
   const prompt = `
     Role: Translator.
