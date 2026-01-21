@@ -9,6 +9,7 @@ import { translations, UILanguage } from './lang';
 
 const App: React.FC = () => {
   const [uiLang, setUiLang] = useState<UILanguage>('ja');
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [state, setState] = useState<AppState>({
     inputText: '',
     sourceLang: Language.JAPANESE,
@@ -27,7 +28,23 @@ const App: React.FC = () => {
   useEffect(() => {
     loadHistory();
     window.speechSynthesis.cancel();
+
+    // Logic to detect if it's iOS and not already installed
+    const isIos = /iPhone|iPad|iPod/.test(window.navigator.userAgent);
+    const isStandalone = (window.navigator as any).standalone === true;
+    if (isIos && !isStandalone) {
+      const promptCount = localStorage.getItem('installPromptCount') || '0';
+      if (parseInt(promptCount) < 3) {
+        setShowInstallPrompt(true);
+      }
+    }
   }, []);
+
+  const dismissInstallPrompt = () => {
+    setShowInstallPrompt(false);
+    const count = parseInt(localStorage.getItem('installPromptCount') || '0');
+    localStorage.setItem('installPromptCount', (count + 1).toString());
+  };
 
   const loadHistory = async () => {
     try {
@@ -116,8 +133,6 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, isSpeaking: false, isSpeakingSource: false }));
     if (!text) return;
     const utterance = new SpeechSynthesisUtterance(text);
-    // Note: Standard SpeechSynthesis might not support Dzongkha well, 
-    // but we use ja-JP as a placeholder for readings if they are in Japanese scripts.
     utterance.lang = 'ja-JP'; 
     utterance.rate = 1.0;
     utterance.onstart = () => {
@@ -145,7 +160,27 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFE] flex flex-col items-center py-6 sm:py-12 px-4 text-slate-900 font-jp overflow-x-hidden">
+    <div className="min-h-screen bg-[#FDFDFE] flex flex-col items-center py-6 sm:py-12 px-4 text-slate-900 font-jp overflow-x-hidden select-none">
+      
+      {/* iOS PWA Install Hint */}
+      {showInstallPrompt && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm animate-in slide-in-from-bottom-10 duration-500">
+          <div className="bg-white rounded-[2rem] shadow-2xl border border-indigo-100 p-5 flex items-center gap-4">
+            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex-shrink-0 flex items-center justify-center text-white text-xl">
+              <i className="fas fa-plus"></i>
+            </div>
+            <div className="flex-1">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">PWA Install</p>
+              <p className="text-xs font-bold text-slate-700">Tap <i className="fa-solid fa-arrow-up-from-bracket text-indigo-500"></i> then <span className="text-indigo-600">"Add to Home Screen"</span> to install.</p>
+            </div>
+            <button onClick={dismissInstallPrompt} className="text-slate-300 hover:text-slate-400 p-2">
+              <i className="fas fa-times text-lg"></i>
+            </button>
+          </div>
+          <div className="w-6 h-6 bg-white border-r border-b border-indigo-100 rotate-45 absolute -bottom-3 left-1/2 -translate-x-1/2"></div>
+        </div>
+      )}
+
       <header className="max-w-2xl w-full mb-8 flex flex-col sm:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-4 w-full sm:w-auto">
           <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-100/50">
@@ -155,7 +190,6 @@ const App: React.FC = () => {
             <h1 className="text-2xl font-black text-slate-900 leading-none tracking-tight">{t.appTitle}</h1>
             <p className="text-slate-400 text-[10px] font-black tracking-[0.2em] uppercase mt-1">{t.appSubtitle}</p>
           </div>
-          {/* UI Language Switcher */}
           <button 
             onClick={() => setUiLang(prev => prev === 'ja' ? 'en' : 'ja')}
             className="sm:hidden w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-indigo-600 font-black text-xs"
@@ -201,7 +235,6 @@ const App: React.FC = () => {
         {state.viewMode === 'translate' ? (
           <>
             <section className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/20 border border-slate-50 p-6 sm:p-8">
-              {/* Language Selector Row */}
               <div className="flex items-center gap-2 mb-8 bg-slate-50/80 p-3 rounded-[1.5rem] border border-slate-100">
                 <div className="flex-1 text-center">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">{t.labelSource}</span>
