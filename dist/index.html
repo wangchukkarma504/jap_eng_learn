@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-version="4">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -9,7 +9,7 @@
     <!-- PWA / SEO -->
     <meta name="theme-color" content="#4f46e5">
     <meta name="description" content="AI-powered Japanese and Dzongkha language learning bridge with word analysis and speech.">
-    <link rel="manifest" href="./manifest-1cprZKfl.json">
+    <link rel="manifest" href="./manifest-1cprZKfl.json?v=4">
     
     <!-- iOS / Apple Specific -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1782,11 +1782,15 @@ FIREBASE: `))}restoreState_(){this.tryAuth(),this.tryAppCheck();for(const n of t
     </div>
     <div id="root"></div>
     <script>
-        // Service Worker registration
+        // Service Worker registration with forced update
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW registered'))
+                navigator.serviceWorker.register('./sw.js?v=4', { updateViaCache: 'none' })
+                    .then(reg => {
+                        console.log('SW registered');
+                        // Force update check
+                        reg.update();
+                    })
                     .catch(err => console.log('SW error', err));
             });
         }
