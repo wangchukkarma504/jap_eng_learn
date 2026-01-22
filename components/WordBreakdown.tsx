@@ -14,6 +14,10 @@ const WordBreakdown: React.FC<Props> = ({ breakdown, language, uiLang }) => {
   const isDz = language === Language.DZONGKHA;
   const t = translations[uiLang];
 
+  if (!breakdown || breakdown.length === 0) {
+    return null;
+  }
+
   return (
     <div className="pt-10 border-t border-slate-100/60">
       <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] mb-6 flex items-center">
