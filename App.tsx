@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Language, AppState } from './types';
 import { translateAndAnalyze } from './services/geminiService';
-import { saveHistoryItem, getHistoryItems, findCachedTranslation, saveCachedTranslation } from './services/historyDb';
+import { saveHistoryItem, getHistoryItems, getReviewItems, findCachedTranslation, saveCachedTranslation, approveReviewItem, subscribeToReviewItems, subscribeToLibraryItems } from './services/historyDb';
 import TranslationCard from './components/TranslationCard';
 import HistoryView from './components/HistoryView';
 import { translations, UILanguage } from './lang';
@@ -22,12 +22,24 @@ const App: React.FC = () => {
     viewMode: 'translate',
     history: []
   });
+  const [reviewItems, setReviewItems] = useState<AppState['history']>([]);
 
   const t = translations[uiLang];
 
   useEffect(() => {
     loadHistory();
     window.speechSynthesis.cancel();
+
+    // Setup realtime listeners
+    const unsubscribeReview = subscribeToReviewItems((items) => {
+      console.log("Review items updated:", items);
+      setReviewItems(items);
+    });
+
+    const unsubscribeLibrary = subscribeToLibraryItems((items) => {
+      console.log("Library items updated:", items);
+      setState(prev => ({ ...prev, history: items }));
+    });
 
     // Logic to detect if it's iOS and not already installed
     const isIos = /iPhone|iPad|iPod/.test(window.navigator.userAgent);
@@ -38,6 +50,12 @@ const App: React.FC = () => {
         setShowInstallPrompt(true);
       }
     }
+
+    // Cleanup listeners on unmount
+    return () => {
+      unsubscribeReview();
+      unsubscribeLibrary();
+    };
   }, []);
 
   const dismissInstallPrompt = () => {
@@ -48,8 +66,9 @@ const App: React.FC = () => {
 
   const loadHistory = async () => {
     try {
-      const history = await getHistoryItems();
+      const [history, review] = await Promise.all([getHistoryItems(), getReviewItems()]);
       setState(prev => ({ ...prev, history }));
+      setReviewItems(review);
     } catch (e) {
       console.error("Failed to load history", e);
     }
@@ -67,49 +86,44 @@ const App: React.FC = () => {
 
     try {
       let result = null;
+      
+      // Check if translation already exists in library
       try {
-        const cachedResult = await findCachedTranslation(normalizedText, state.sourceLang, state.targetLang);
-        if (cachedResult) {
-          result = cachedResult;
+        const existingResult = await findCachedTranslation(normalizedText, state.sourceLang, state.targetLang);
+        if (existingResult) {
+          result = existingResult;
+          console.log("Result from library:", result);
         }
       } catch (dbError) {
-        console.warn("Cache lookup failed", dbError);
+        console.warn("Library lookup failed", dbError);
       }
 
+      // If not found, translate and save to review
       if (!result) {
         result = await translateAndAnalyze(state.inputText, state.sourceLang, state.targetLang);
-        await saveCachedTranslation(normalizedText, state.sourceLang, state.targetLang, result);
-      }
-      
-      const isDuplicate = state.history.some(item => 
-        item.result.sourceText.trim() === normalizedText && 
-        item.sourceLang === state.sourceLang && 
-        item.targetLang === state.targetLang
-      );
-
-      if (!isDuplicate) {
+        console.log("Result from translateAndAnalyze:", result);
+        
         const historyItem = {
           timestamp: Date.now(),
           sourceLang: state.sourceLang,
           targetLang: state.targetLang,
-          result: result
+          result: result,
+          status: 'review' as const
         };
         
-        await saveHistoryItem(historyItem);
-        const updatedHistory = await getHistoryItems();
-        setState(prev => ({ 
-          ...prev, 
-          result, 
-          history: updatedHistory,
-          isLoading: false 
-        }));
-      } else {
-        setState(prev => ({ 
-          ...prev, 
-          result, 
-          isLoading: false 
-        }));
+        await saveHistoryItem(historyItem, 'review');
       }
+      
+      const updatedHistory = await getHistoryItems();
+      const updatedReview = await getReviewItems();
+      console.log("Setting state with result:", result);
+      setState(prev => ({ 
+        ...prev, 
+        result, 
+        history: updatedHistory,
+        isLoading: false 
+      }));
+      setReviewItems(updatedReview);
 
     } catch (err) {
       console.error(err);
@@ -132,9 +146,20 @@ const App: React.FC = () => {
     window.speechSynthesis.cancel();
     setState(prev => ({ ...prev, isSpeaking: false, isSpeakingSource: false }));
     if (!text) return;
+    
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ja-JP'; 
     utterance.rate = 1.0;
+    
+    // Use Japanese voice for all (since Dzongkha uses Katakana transliteration)
+    utterance.lang = 'ja-JP';
+    const voices = window.speechSynthesis.getVoices();
+    const japaneseVoice = voices.find(voice => 
+      voice.lang === 'ja-JP' && voice.name.includes('Google')
+    ) || voices.find(voice => voice.lang === 'ja-JP');
+    if (japaneseVoice) {
+      utterance.voice = japaneseVoice;
+    }
+    
     utterance.onstart = () => {
       setState(prev => ({ ...prev, [isSource ? 'isSpeakingSource' : 'isSpeaking']: true }));
     };
@@ -161,7 +186,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFDFE] flex flex-col items-center py-6 sm:py-12 px-4 text-slate-900 font-jp overflow-x-hidden select-none">
-      
+
       {/* iOS PWA Install Hint */}
       {showInstallPrompt && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm animate-in slide-in-from-bottom-10 duration-500">
@@ -196,9 +221,35 @@ const App: React.FC = () => {
           >
             {uiLang.toUpperCase()}
           </button>
+          
+          {/* Bell Notification - Mobile */}
+          {reviewItems.length > 0 && (
+            <button
+              onClick={() => toggleView('history')}
+              className="sm:hidden relative w-10 h-10 rounded-xl bg-white border border-amber-200 shadow-sm flex items-center justify-center text-amber-600 transition-all active:scale-95"
+            >
+              <i className="fas fa-bell text-base animate-pulse"></i>
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-lg">
+                {reviewItems.length}
+              </span>
+            </button>
+          )}
         </div>
         
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          {/* Bell Notification - Desktop */}
+          {reviewItems.length > 0 && (
+            <button
+              onClick={() => toggleView('history')}
+              className="hidden sm:flex relative w-10 h-10 rounded-xl bg-white border border-amber-200 shadow-sm items-center justify-center text-amber-600 hover:bg-amber-50 transition-all active:scale-95"
+            >
+              <i className="fas fa-bell text-base animate-pulse"></i>
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-lg">
+                {reviewItems.length}
+              </span>
+            </button>
+          )}
+          
           <button 
             onClick={() => setUiLang(prev => prev === 'ja' ? 'en' : 'ja')}
             className="hidden sm:flex px-3 py-2 rounded-xl bg-white border border-slate-100 shadow-sm items-center justify-center text-indigo-600 font-black text-xs hover:border-indigo-100 transition-all"
@@ -320,6 +371,13 @@ const App: React.FC = () => {
                   isSpeakingSource={state.isSpeakingSource}
                   isSpeakingTarget={state.isSpeaking}
                   uiLang={uiLang}
+                  onUpdate={async (updatedResult) => {
+                    console.log("onUpdate called with:", updatedResult);
+                    // Update current result immediately for instant feedback
+                    setState(prev => ({ ...prev, result: updatedResult }));
+                    // Reload history from Firebase to ensure consistency
+                    await loadHistory();
+                  }}
                 />
               </div>
             )}
@@ -327,12 +385,21 @@ const App: React.FC = () => {
         ) : (
           <div className="animate-in fade-in duration-500">
             <HistoryView 
-              history={state.history} 
+              history={[...reviewItems, ...state.history]} 
               onBack={() => toggleView('translate')}
               onPlayAudio={playSpeech}
               isSpeakingSource={state.isSpeakingSource}
               isSpeakingTarget={state.isSpeaking}
               uiLang={uiLang}
+              onHistoryUpdate={async () => {
+                console.log("Reloading history after edit...");
+                await loadHistory();
+              }}
+              onApprove={async (itemId) => {
+                console.log("Approving item:", itemId);
+                await approveReviewItem(itemId);
+                await loadHistory();
+              }}
             />
           </div>
         )}

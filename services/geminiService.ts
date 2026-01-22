@@ -1,7 +1,7 @@
 
 import { Language, TranslationResult } from "../types";
 
-const API_URL = "https://script.google.com/macros/s/AKfycbyLc-WBmyCcUOZWSzmWD44Lp37eHveV_8wLGUGtqhTj4mDXg4BZlkasgGbF72lP9qi4/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzlnBpSkj5YT8PP_h2GzuoEwBMxubMvenUPCK7DIgT0b1dQuXnxkb0GPlDZYvOWjA/exec";
 
 export const translateAndAnalyze = async (
   text: string,
@@ -13,77 +13,147 @@ export const translateAndAnalyze = async (
   let referenceTranslation = "";
   if (targetLang === "Dzongkha") {
     try {
-      const res = await fetch(
-        "https://script.google.com/macros/s/AKfycbyLc-WBmyCcUOZWSzmWD44Lp37eHveV_8wLGUGtqhTj4mDXg4BZlkasgGbF72lP9qi4/exec?action=translate",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            text: text
-          }),
-          mode: 'cors',
-          credentials: 'omit'
-        }
-      );
+      const res = await fetch(API_URL + "?action=translate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain"
+        },
+        body: JSON.stringify({
+          text: text
+        }),
+      });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
       if (data.status === "success") {
         referenceTranslation = data.text;
+      } else if (data.error) {
+        console.error("Translate API error:", data.error);
       }
     } catch (error) {
-      console.error("Failed to fetch reference translation (CORS issue?):", error);
-      console.log("Continuing without reference translation...");
+      console.error("Failed to fetch reference translation:", error);
+      console.error("Error details:", error.message);
     }
   }
   
   const message = `
-Role: Translator.
-Task: Translate "${text}" from ${sourceLang} to ${targetLang}.
-${referenceTranslation ? `Reference Translation: "${referenceTranslation}"` : ""}
+Generate pronunciation guide in XML format.
 
-STRICT OUTPUT RULES:
-1. Output MUST be valid JSON.
-2. NO ROMAJI (Latin Characters). Use ONLY Japanese scripts (Hiragana/Katakana) for readings.
-3. NO EXPLANATIONS. NO PART OF SPEECH. Keep it simple.
-4. Reading for DZONGKHA MUST be in KATAKANA.
-5. Reading for JAPANESE MUST be in HIRAGANA.
+Source: "${text}" (Japanese)
+Translation: "${referenceTranslation}" (Dzongkha)
 
-JSON Structure:
-{
-  "sourceTransliteration": "Reading of source in Japanese script",
-  "targetText": "Translation",
-  "targetTransliteration": "Reading of target in Japanese script",
-  "breakdown": [
-    {
-      "original": "Target word",
-      "sourceTerm": "Exact corresponding Source word",
-      "translated": "Simple Meaning (in Japanese)",
-      "transliteration": "Reading of Target word (in Japanese script)"
-    }
-  ]
-}
+CRITICAL RULES:
+- Japanese source: Convert to Hiragana reading (e.g., お元気 → おげんき)
+- Dzongkha translation: Convert to Katakana pronunciation (e.g., བཀྲ་ཤིས་ → タシ)
+- NO romanization (no Latin letters)
+- NO placeholder text - use actual transliterations
+- Output XML only, NO markdown blocks.
+
+Example format:
+<response>
+  <sourceTransliteration>おげんきですか</sourceTransliteration>
+  <targetText>ཁྱོད་ག་དེ་སྦེ་འདུག།</targetText>
+  <targetTransliteration>キョー ガデベ ドゥッ</targetTransliteration>
+  <breakdown>
+    <word>
+      <original>ཁྱོད་</original>
+      <sourceTerm>あなた</sourceTerm>
+      <translated>あなた</translated>
+      <transliteration>キョー</transliteration>
+    </word>
+  </breakdown>
+</response>
   `;
+
+  const messages = [{ role: "user", content: message }];
 
   const response = await fetch(API_URL + "?action=chat", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
     body: JSON.stringify({
-      message: message
-    })
+      model: "gemini-2.5-flash",
+      provider: "gemini",
+      messages: messages
+    }),
   });
 
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
   const result = await response.json();
-  const data = JSON.parse(result.reply || '{}');
-  return {
+  
+  if (result.error) {
+    throw new Error(`API error: ${result.error}`);
+  }
+  
+  // Extract XML from the reply
+  let data;
+  try {
+    // Remove markdown code block markers if present
+    let cleanedReply = result.reply
+      .replace(/```xml\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    console.log("Cleaned reply:", cleanedReply);
+    
+    const xmlMatch = cleanedReply.match(/<response>[\s\S]*?<\/response>/);
+    const xmlString = xmlMatch ? xmlMatch[0] : cleanedReply;
+    
+    console.log("XML String:", xmlString);
+    
+    // Parse XML manually (simple parser for our specific structure)
+    const getTagContent = (tag: string) => {
+      const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`);
+      const match = xmlString.match(regex);
+      const content = match ? match[1].trim() : '';
+      console.log(`Tag ${tag}:`, content, 'Match:', match);
+      return content;
+    };
+    
+    const breakdownMatch = xmlString.match(/<breakdown>([\s\S]*?)<\/breakdown>/);
+    const breakdown = [];
+    if (breakdownMatch) {
+      const wordMatches = breakdownMatch[1].matchAll(/<word>([\s\S]*?)<\/word>/g);
+      for (const wordMatch of wordMatches) {
+        const wordXml = wordMatch[1];
+        breakdown.push({
+          original: wordXml.match(/<original>([\s\S]*?)<\/original>/)?.[1].trim() || '',
+          sourceTerm: wordXml.match(/<sourceTerm>([\s\S]*?)<\/sourceTerm>/)?.[1].trim() || '',
+          translated: wordXml.match(/<translated>([\s\S]*?)<\/translated>/)?.[1].trim() || '',
+          transliteration: wordXml.match(/<transliteration>([\s\S]*?)<\/transliteration>/)?.[1].trim() || ''
+        });
+      }
+    }
+    
+    data = {
+      sourceTransliteration: getTagContent('sourceTransliteration'),
+      targetText: getTagContent('targetText'),
+      targetTransliteration: getTagContent('targetTransliteration'),
+      breakdown
+    };
+    
+    console.log("Parsed data:", data);
+  } catch (error) {
+    console.error("Failed to parse AI response:", error);
+    console.log("Raw reply:", result.reply);
+    throw new Error("Failed to parse translation response");
+  }
+  
+  const finalResult = {
     sourceText: text,
     sourceTransliteration: data.sourceTransliteration,
     targetText: data.targetText,
     targetTransliteration: data.targetTransliteration,
     breakdown: data.breakdown,
     language: targetLang,
-    source: 'AI'
+    source: 'AI' as const
   };
+  
+  console.log("Final result being returned:", finalResult);
+  
+  return finalResult;
 };

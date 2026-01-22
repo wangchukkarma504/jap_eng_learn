@@ -21,12 +21,22 @@ export interface TranslationResult {
   source?: 'AI' | 'CACHE';
 }
 
+export type ReviewStatus = 'review' | 'approved';
+
+export interface EditLock {
+  userId: string;
+  timestamp: number;
+  expiresAt: number;
+}
+
 export interface HistoryItem {
-  id?: number;
+  id?: number | string;
   timestamp: number;
   sourceLang: Language;
   targetLang: Language;
   result: TranslationResult;
+  status: ReviewStatus;
+  editLock?: EditLock;
 }
 
 export interface AppState {

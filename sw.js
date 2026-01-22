@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'lingobridge-static-v2';
+const CACHE_NAME = 'lingobridge-static-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -33,6 +33,12 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Don't cache API requests - always fetch fresh
+  if (event.request.url.includes('script.google.com')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;
