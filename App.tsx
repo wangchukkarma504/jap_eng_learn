@@ -111,7 +111,11 @@ const App: React.FC = () => {
           status: 'review' as const
         };
         
-        await saveHistoryItem(historyItem, 'review');
+        const savedItemId = await saveHistoryItem(historyItem, 'review');
+        console.log("Saved to review with ID:", savedItemId);
+        
+        // Wait a bit for Firebase to propagate
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
       
       const updatedHistory = await getHistoryItems();
@@ -121,7 +125,7 @@ const App: React.FC = () => {
         ...prev, 
         result, 
         history: updatedHistory,
-        isLoading: false 
+        isLoading: false
       }));
       setReviewItems(updatedReview);
 

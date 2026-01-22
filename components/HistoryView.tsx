@@ -26,12 +26,7 @@ const HistoryView: React.FC<Props> = ({
   onApprove
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const t = translations[uiLang];
-
-  // Minimum swipe distance (in px) to trigger navigation
-  const minSwipeDistance = 50;
 
   if (history.length === 0) {
     return (
@@ -61,30 +56,6 @@ const HistoryView: React.FC<Props> = ({
     setCurrentIndex(prev => (prev < history.length - 1 ? prev + 1 : prev));
   };
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-
-    if (isLeftSwipe && currentIndex < history.length - 1) {
-      handleNext();
-    }
-    if (isRightSwipe && currentIndex > 0) {
-      handlePrev();
-    }
-  };
-
   return (
     <div className="flex flex-col h-full space-y-4">
       {/* Navigation Header */}
@@ -110,14 +81,30 @@ const HistoryView: React.FC<Props> = ({
       </div>
 
       {/* Card Area */}
-      <div 
-        className="relative flex-1 pb-6"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-      >
-        <div key={currentItem.id} className="animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="relative flex-1 pb-6">
+        {/* Navigation Arrows - Fixed to screen */}
+        {history.length > 1 && (
+          <>
+            <button
+              onClick={handlePrev}
+              disabled={currentIndex === 0}
+              className="fixed left-4 top-1/2 -translate-y-1/2 z-50 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border border-slate-200 shadow-lg flex items-center justify-center text-slate-600 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 transition-all disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-white/90 disabled:hover:border-slate-200 disabled:hover:text-slate-600 active:scale-90"
+            >
+              <i className="fas fa-chevron-left text-sm"></i>
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={currentIndex === history.length - 1}
+              className="fixed right-4 top-1/2 -translate-y-1/2 z-50 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border border-slate-200 shadow-lg flex items-center justify-center text-slate-600 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 transition-all disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-white/90 disabled:hover:border-slate-200 disabled:hover:text-slate-600 active:scale-90"
+            >
+              <i className="fas fa-chevron-right text-sm"></i>
+            </button>
+          </>
+        )}
+        
+        <div className="animate-in fade-in duration-300">
           <TranslationCard 
+            key={currentItem.id}
             result={currentItem.result}
             sourceLang={currentItem.sourceLang}
             targetLang={currentItem.targetLang}
@@ -163,17 +150,6 @@ const HistoryView: React.FC<Props> = ({
                 }`}
               />
             ))}
-          </div>
-        )}
-        
-        {/* Swipe Hint */}
-        {history.length > 1 && currentIndex === 0 && (
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 animate-bounce">
-            <div className="bg-slate-900/80 text-white text-[9px] font-bold px-4 py-2 rounded-full flex items-center gap-2">
-              <i className="fas fa-hand-pointer"></i>
-              <span>Swipe to navigate</span>
-              <i className="fas fa-arrow-right-arrow-left"></i>
-            </div>
           </div>
         )}
       </div>

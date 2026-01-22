@@ -40,18 +40,30 @@ const TranslationCard: React.FC<Props> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedSourceTranslit, setEditedSourceTranslit] = useState(result.sourceTransliteration);
   const [editedTargetTranslit, setEditedTargetTranslit] = useState(result.targetTransliteration);
+  const [editedBreakdown, setEditedBreakdown] = useState(result.breakdown);
   const [isSaving, setIsSaving] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [hasLock, setHasLock] = useState(false);
   const t = translations[uiLang];
-  
-  console.log("TranslationCard received result:", result);
+
+  // Auto-update breakdown when targetTransliteration changes
+  useEffect(() => {
+    if (isEditing && editedTargetTranslit) {
+      const translitParts = editedTargetTranslit.trim().split(/\s+/);
+      const updatedBreakdown = result.breakdown.map((word, index) => ({
+        ...word,
+        transliteration: translitParts[index] || word.transliteration
+      }));
+      setEditedBreakdown(updatedBreakdown);
+    }
+  }, [editedTargetTranslit, isEditing, result.breakdown]);
 
   // Update local edit state when result prop changes
   useEffect(() => {
     setEditedSourceTranslit(result.sourceTransliteration);
     setEditedTargetTranslit(result.targetTransliteration);
-  }, [result.sourceTransliteration, result.targetTransliteration]);
+    setEditedBreakdown(result.breakdown);
+  }, [result.sourceTransliteration, result.targetTransliteration, result.breakdown]);
 
   // Release lock when unmounting or when edit mode is cancelled
   useEffect(() => {
@@ -84,7 +96,8 @@ const TranslationCard: React.FC<Props> = ({
     try {
       const updates: Partial<TranslationResult> = {
         sourceTransliteration: editedSourceTranslit,
-        targetTransliteration: editedTargetTranslit
+        targetTransliteration: editedTargetTranslit,
+        breakdown: editedBreakdown
       };
       
       console.log("Saving updates:", updates);
@@ -118,6 +131,7 @@ const TranslationCard: React.FC<Props> = ({
   const handleCancel = async () => {
     setEditedSourceTranslit(result.sourceTransliteration);
     setEditedTargetTranslit(result.targetTransliteration);
+    setEditedBreakdown(result.breakdown);
     setIsEditing(false);
     
     // Release lock
@@ -134,15 +148,20 @@ const TranslationCard: React.FC<Props> = ({
       return;
     }
     
-    // Try to acquire lock
     const collection = status === 'review' ? 'review' : 'library';
-    const acquired = await acquireEditLock(itemId, collection);
     
-    if (acquired) {
-      setHasLock(true);
-      setIsEditing(true);
-    } else {
-      alert("Someone else is currently editing this item. Please try again later.");
+    try {
+      const acquired = await acquireEditLock(itemId, collection);
+      
+      if (acquired) {
+        setHasLock(true);
+        setIsEditing(true);
+      } else {
+        alert("Someone else is currently editing this item. Please try again later.");
+      }
+    } catch (error) {
+      console.error("Error acquiring lock:", error);
+      alert("Failed to start editing. Please try again.");
     }
   };
 
@@ -161,10 +180,10 @@ const TranslationCard: React.FC<Props> = ({
   };
 
   return (
-    <section className="bg-white rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden">
+    <section className="bg-white rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden" style={{ pointerEvents: 'auto' }}>
       
       {/* Decorative background glow */}
-      <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-50/40 rounded-full blur-3xl -mr-24 -mt-24"></div>
+      <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-50/40 rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none"></div>
 
       {/* Top badges container - mobile responsive */}
       <div className="flex flex-wrap gap-2 p-3 pb-0">
@@ -198,12 +217,12 @@ const TranslationCard: React.FC<Props> = ({
       </div>
 
       {/* Edit/Approve Buttons - mobile responsive */}
-      <div className="flex gap-2 px-3 pt-2 pb-3 flex-wrap justify-end">
+      <div className="relative flex gap-2 px-3 pt-2 pb-3 flex-wrap justify-end z-40">
         {status === 'review' && !isEditing && !isLockedByAnother && (
           <button
             onClick={handleApprove}
             disabled={isApproving}
-            className="px-4 py-2 rounded-xl text-[9px] font-black tracking-wider uppercase shadow-sm bg-emerald-500 text-white hover:bg-emerald-600 transition-all disabled:opacity-50 active:scale-95"
+            className="relative z-50 px-4 py-2 rounded-xl text-[9px] font-black tracking-wider uppercase shadow-sm bg-emerald-500 text-white hover:bg-emerald-600 transition-all disabled:opacity-50 active:scale-95"
           >
             <i className={`fas ${isApproving ? 'fa-spinner fa-spin' : 'fa-check-circle'} mr-1.5`}></i>
             {isApproving ? 'APPROVING' : 'APPROVE'}
@@ -211,8 +230,12 @@ const TranslationCard: React.FC<Props> = ({
         )}
         {!isEditing && !isLockedByAnother ? (
           <button
-            onClick={handleStartEdit}
-            className="px-4 py-2 rounded-xl text-[9px] font-black tracking-wider uppercase shadow-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all active:scale-95"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleStartEdit();
+            }}
+            className="relative z-50 px-4 py-2 rounded-xl text-[9px] font-black tracking-wider uppercase shadow-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all active:scale-95 cursor-pointer"
           >
             <i className="fas fa-edit mr-1.5"></i>
             EDIT
@@ -328,7 +351,7 @@ const TranslationCard: React.FC<Props> = ({
         </div>
 
         <WordBreakdown 
-          breakdown={result.breakdown} 
+          breakdown={isEditing ? editedBreakdown : result.breakdown} 
           language={targetLang} 
           uiLang={uiLang}
         />
