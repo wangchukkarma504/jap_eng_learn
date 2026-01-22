@@ -152,13 +152,15 @@ const App: React.FC = () => {
     if (!text) return;
     
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
+    utterance.rate = 0.85;  // Slightly slower for more natural speech
+    utterance.pitch = 1.0;  // Natural pitch
+    utterance.volume = 1.0; // Full volume
     
     // Use Japanese voice for all (since Dzongkha uses Katakana transliteration)
     utterance.lang = 'ja-JP';
     const voices = window.speechSynthesis.getVoices();
     const japaneseVoice = voices.find(voice => 
-      voice.lang === 'ja-JP' && voice.name.includes('Google')
+      voice.lang === 'ja-JP' && (voice.name.includes('Google') || voice.name.includes('Natural'))
     ) || voices.find(voice => voice.lang === 'ja-JP');
     if (japaneseVoice) {
       utterance.voice = japaneseVoice;

@@ -73,7 +73,7 @@ Example format:
   const response = await fetch(API_URL + "?action=chat", {
     method: "POST",
     body: JSON.stringify({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       provider: "gemini",
       messages: messages
     }),
