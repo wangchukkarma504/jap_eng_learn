@@ -1,7 +1,17 @@
 
 import { Language, TranslationResult } from "../types";
+import { auth } from "./firebase";
 
-const API_URL = "https://script.google.com/macros/s/AKfycbzlnBpSkj5YT8PP_h2GzuoEwBMxubMvenUPCK7DIgT0b1dQuXnxkb0GPlDZYvOWjA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzQd05WkhdcL65-JtM2vKzWl8xbdbubnGrSCjsmbkQDjf1BCFqKXnNzuaYNPGwT97gU/exec";
+
+// Helper function to get Firebase ID token
+const getAuthToken = async (): Promise<string> => {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+  return await user.getIdToken();
+};
 
 export const translateAndAnalyze = async (
   text: string,
@@ -9,18 +19,18 @@ export const translateAndAnalyze = async (
   targetLang: Language
 ): Promise<TranslationResult> => {
   
+  // Get auth token
+  const token = await getAuthToken();
+  
   // Get reference translation from custom translation API
   let referenceTranslation = "";
   if (targetLang === "Dzongkha") {
     try {
-      const res = await fetch(API_URL + "?action=translate", {
+      const url = `${API_URL}?action=translate&token=${encodeURIComponent(token)}`;
+      
+      const res = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "text/plain"
-        },
-        body: JSON.stringify({
-          text: text
-        }),
+        body: JSON.stringify({ text: text }),
       });
       
       if (!res.ok) {
@@ -70,10 +80,12 @@ Example format:
 
   const messages = [{ role: "user", content: message }];
 
-  const response = await fetch(API_URL + "?action=chat", {
+  const chatUrl = `${API_URL}?action=chat&token=${encodeURIComponent(token)}`;
+
+  const response = await fetch(chatUrl, {
     method: "POST",
     body: JSON.stringify({
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash",
       provider: "gemini",
       messages: messages
     }),
